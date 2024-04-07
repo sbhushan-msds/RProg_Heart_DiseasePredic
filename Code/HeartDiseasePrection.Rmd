@@ -1,0 +1,215 @@
+---
+title: "Term Project Step 3"
+author: "Shashi Bhushan"
+date: '2022-06-04'
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+bibliography: bibliography.bib
+---
+
+# Introduction
+This project Identify parameters that can be used to predict risk of heart attack utilizing existing data set from different hospital systems. Every year, more than 800,000 people have heart attack only in the U.S.A [@data]. Therefore, identification of certain body characteristics and health conditions will be helpful in understanding the risk of a heart attack and provide people a chance to remedy before it happens.Therefore, it is data science problem as it depends of variaous body attributes and other existing health conditions.
+
+
+# The problem statement you addressed
+Following problem statements have been addressed utilzing three dataset as seen in the next section:
+
+1. Identify relevant predictor variables such as age, sex, cholesterol, etc. from the dataset to predict heart disease diagnosis.
+2. Identify relevant predictor variables to predict death due to heart attack.
+3. Identify which predictor variables explain the variability the most.
+4. Does the people who smoke are more suscepticle to heart disease / attack?
+5. Are males or females more susceptible to heart disease / attack?
+
+# How you addressed this problem statement
+
+## Dataset Used
+Following dataset have been used:
+
+1. Heart Failure Prediction [@heart1]- Data has thirteen variables. It was used in the project, "Machine learning can predict survival of patients with heart failure from serum creatinine and ejection fraction alone." Dataset does not have missing values.
+
+2. Heart Failure Prediction dataset [@heart2] - This dataset was created by combining different datasets already available independently but not combined before. In this dataset, 5 heart datasets are combined over 11 common features which makes it the largest heart disease dataset available so far for research purposes. It also has the predicted variable denoting heart disease.Dataset does not have missing values.
+
+3. Heart Attack Prediction [@heart3]- This database contains 76 attributes, but all published experiments refer to using a subset of 14 of them. Missing values are denoted by a "?." This data was collected from four locations.
+
+## Methodology Used
+Methodology includes the following:
+
+1. Produce summary statistics of the data for the variables known to have direct correlation such as cholesterol and smoking with heart failure and/or heart attack.
+2. Produce boxplots to illustrate association of heart disease with health parameters.
+3. Create a logistic multiple regression model to identify relevant predictor variables.
+4. Carry out hypothesis testing to test whether people who smoke and male or female are more susceptible to heart disease / attacks.
+
+## Model / Analysis Steps
+
+```{r include =TRUE}
+
+setwd("/Users/sbhus/OneDrive/Documents/MSDS/DSC 520/Weekly Exercises/term project")
+data1 <- read.csv("heart_attack_prediction.csv")
+data2 <- read.csv("heart_failure_clinical_records_dataset.csv")
+data3 <- read.csv("failure_prediction.csv")
+library(lm.beta)
+library(ggplot2)
+library(dplyr)
+library(caTools)
+
+# Data Preparation
+data1 <- select(data1, -slope, -ca, -thal)
+data1[data1 == "?"] <- NA
+data1 <- na.omit(data1)
+data1$sex <-as.factor(data1$sex)
+data1$cp <- as.factor(data1$cp)
+data1$fbs <- as.factor(data1$fbs)
+data1$restecg <- as.factor(data1$restecg)
+data1$exang <- as.factor(data1$exang)
+data1$num <- as.factor(data1$num)
+data1$trestbps <- as.numeric(data1$trestbps)
+data1$chol <- as.numeric(data1$chol)
+data1$thalach <- as.numeric(data1$thalach)
+data2$anaemia <- as.factor(data2$anaemia)
+data2$diabetes <- as.factor(data2$diabetes)
+data2$high_blood_pressure <- as.factor(data2$high_blood_pressure)
+data2$sex <- as.factor(data2$sex)
+data2$smoking <- as.factor(data2$smoking)
+data2$DEATH_EVENT <- as.factor(data2$DEATH_EVENT)
+data3$FastingBS <- as.factor(data3$FastingBS)
+data3$HeartDisease <- as.factor(data3$HeartDisease)
+
+
+# Boxplots
+
+ggplot(data1, aes(x=num, y=age)) + geom_boxplot()
+ggplot(data1, aes(x=num, y=chol)) + geom_boxplot()
+ggplot(data1, aes(x=num, y=thalach)) + geom_boxplot()
+ggplot(data2, aes(x=DEATH_EVENT, y = creatinine_phosphokinase)) + geom_boxplot()
+ggplot(data2, aes(x=DEATH_EVENT, y = ejection_fraction)) + geom_boxplot()
+ggplot(data2, aes(x=DEATH_EVENT, y = serum_creatinine)) + geom_boxplot()
+ggplot(data2, aes(x=DEATH_EVENT, y = serum_sodium)) + geom_boxplot()
+ggplot(data3, aes(x=HeartDisease, y = Age)) + geom_boxplot()
+ggplot(data3, aes(x=HeartDisease, y = RestingBP)) + geom_boxplot()
+ggplot(data3, aes(x=HeartDisease, y = MaxHR)) + geom_boxplot()
+
+# Data 1 Analysis
+split <- sample.split(data1, SplitRatio = 0.8)
+train <- subset(data1, split == "TRUE")
+validate <- subset(data1, split == "FALSE")
+lgm_data1 <- glm(num ~ age+sex+cp+trestbps+
+                   chol+fbs+restecg+thalach+exang+oldpeak, 
+                 data=train, family=binomial())
+summary(lgm_data1)
+lgm_data1 <- glm(num ~ sex+exang+oldpeak, data=train, family=binomial())
+summary(lgm_data1)
+res <- predict(lgm_data1, validate, type = "response")
+res2 <- predict(lgm_data1, train, type = "response")
+confmatrix <- table(Actual_Value=train$num, Predicted_Value = res2 >0.5)
+(confmatrix[[1.1]] +confmatrix[[2,2]])/sum(confmatrix)
+
+# Data 2 Analysis
+split <- sample.split(data2, SplitRatio = 0.8)
+train <- subset(data2, split == "TRUE")
+validate <- subset(data2, split == "FALSE")
+lgm_data2 <- glm(DEATH_EVENT ~ age+anaemia+creatinine_phosphokinase+
+                   diabetes+ejection_fraction+high_blood_pressure+
+                   platelets+serum_creatinine+serum_sodium+
+                   sex+smoking+time, data=train, family=binomial())
+summary(lgm_data2)
+lgm_data2 <- glm(DEATH_EVENT ~ age+ejection_fraction+serum_creatinine
+                 +time, data=train, family=binomial())
+summary(lgm_data2)
+res <- predict(lgm_data2, validate, type = "response")
+res2 <- predict(lgm_data2, train, type = "response")
+confmatrix <- table(Actual_Value=train$DEATH_EVENT, Predicted_Value = res2 >0.5)
+(confmatrix[[1.1]] +confmatrix[[2,2]])/sum(confmatrix)
+
+# Data 3 Analysis
+split <- sample.split(data3, SplitRatio = 0.8)
+train <- subset(data3, split == "TRUE")
+validate <- subset(data3, split == "FALSE")
+lgm_data3 <- glm(HeartDisease ~ Age+Sex+ChestPainType+RestingBP+
+                   Cholesterol+FastingBS+RestingECG+MaxHR+ExerciseAngina+
+                   Oldpeak+ST_Slope, data=train, family=binomial())
+summary(lgm_data3)
+lgm_data3 <- glm(HeartDisease ~ Sex+ChestPainType+Cholesterol+
+                   FastingBS+ExerciseAngina+
+                   Oldpeak+ST_Slope, data=train, family=binomial())
+summary(lgm_data3)
+res <- predict(lgm_data3, validate, type = "response")
+res2 <- predict(lgm_data3, train, type = "response")
+confmatrix <- table(Actual_Value=train$HeartDisease, Predicted_Value = res2 >0.5)
+(confmatrix[[1.1]] +confmatrix[[2,2]])/sum(confmatrix)
+data2$smoking <- as.numeric(data2$smoking)
+data2$DEATH_EVENT <- as.numeric(data2$DEATH_EVENT)
+data2$sex <- as.numeric(data2$sex)
+
+# Hypothsis testing for correlation using Data 2
+cor.test(data2$smoking, data2$DEATH_EVENT)
+cor.test(data2$sex, data2$DEATH_EVENT)
+
+
+```
+
+
+# Analysis
+## Data 1 Results
+### Boxplots
+
+Reference to the boxplots, following variables appear to be determining factors in predicting heart disease:
+
+1. Age as the median and lower quartile numbers are higher for people with heart disease.
+2. Cholesterol with lower, median, and upper quartile numbers being higher for people with evidence of the heart disease.
+
+### Regression
+
+Logistic regression indicates that sex (Male), exang (exercise induced angina), and oldpeak(ST depression induced by exercise relative to rest) are the statistically relevant variables with p-values less than 0.05. Regression equation with these three variables had an accuracy rate of ~83%.
+
+
+## Data 2 Results
+### Boxplots
+
+Reference to the boxplots, following variables appear to be determining factors in predicting death event due to heart failure:
+
+1. Serum Creatinine with ower, median, and upper quartile numbers being higher for people with evidence of death event.
+
+### Regression
+
+Logistic regression indicates that age, ejection_fraction(Percentage of blood leaving the heart at each contraction), serum_creatinine (Level of serum creatinine in the blood), time (Follow-up period in days) are the statistically relevant variables with p-values less than 0.05. Regression equation with these three variables had an accuracy rate of ~83% in predicting heart failure related death event.
+
+### Hypothesis Testing to indentigy significant correlation between variables
+
+Hypothesis test to check if true correlation is not equal to zero for Death_Event vs sex and smoking variables. In both cases, null hypothsis that true correlation is equal to zero could not be rejected based on p-values.
+
+## Data 3 Results
+### Boxplots
+
+Reference to the boxplots, following variables appear to be determining factors in predicting heart disease :
+
+1. Age as the lower, median and lower quartile numbers are higher for people with heart disease.
+
+### Regression
+
+Logistic regression indicates that sex, chestpaintype, cholesterol, fastingBS (fasting blood sugar), ExerciseAngina (exercise induced angina), oldpeak (ST depression induced by exercise relative to rest),ST_Slope (the slope of the peak exercise ST segment) are the statistically relevant variables with p-values less than 0.05. Regression equation with these three variables had an accuracy rate of ~87%.
+
+# Implications 
+
+Main takeaways from the analysis of three dataset are:
+
+1. Age 50-60 appear to be most vulnerable to heart disease / failure based on the boxplot.
+2. Exercise test / Stress test helps in predicting heart disease or death event associated with heart disease.
+3. Cholesterol, blood sugar are indicator of heart disease. 
+4. Smoking and gender do not appear to play a role in heart disease/failure.
+
+
+# Limitations
+
+1. Age was found to be statistically relevant in 1 of the 3 dataset used. More comprehensive data collection and analysis is required to check a statistically significant connection. 
+2. Did not check for normalcy of the dataset and therefore, it is not confirmed that the data set are representing population.Check for normalcy can help in confirming the results applicable to entire population.
+
+
+
+# Concluding Remarks
+
+Age, cholesterol, blood sugar, stress test, etc. are widely used for identifying heart disease. therefore, results are not surprising. However, since the data set are only ranging from 261 to 918 observations, collection of unbiased data from a larger sample may help in making robust conclusions.
+
+# References
+
